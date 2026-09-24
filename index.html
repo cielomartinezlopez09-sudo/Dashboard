@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- PocketBase SDK -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+    <link rel="stylesheet" href="styles.css">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -60,6 +61,17 @@
             transform: rotate(-90deg);
             transform-origin: 50% 50%;
         }
+        /* Mejora inputs fecha/hora: icono calendario + color scheme */
+        input[type="datetime-local"] {
+            color-scheme: dark;
+        }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.7;
+        }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
@@ -71,14 +83,14 @@
                 <i class="fa-solid fa-microchip text-xl"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg text-white tracking-wide">NEXUS <span class="text-blue-500 text-xs font-normal border border-blue-500/30 px-1.5 py-0.5 rounded ml-1">IoT Suite</span></h1>
+                <h1 class="font-bold text-lg text-white tracking-wide">DASHBOARD <span class="text-blue-500 text-xs font-normal border border-blue-500/30 px-1.5 py-0.5 rounded ml-1">IoT</span></h1>
             </div>
         </div>
 
         <!-- Navigation Tabs -->
         <div class="flex bg-darkBg p-1 rounded-xl border border-borderBg">
             <button id="tab-realtime-btn" onclick="switchTab('realtime')" class="px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 bg-blue-600 text-white shadow-md">
-                <i class="fa-solid fa-[#00ff88] fa-bolt text-xs"></i>
+                <i class="fa-solid fa-bolt text-xs"></i>
                 <span>REALTIME</span>
             </button>
             <button id="tab-history-btn" onclick="switchTab('history')" class="px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-gray-400 hover:text-white">
@@ -94,9 +106,9 @@
                     <span id="pb-status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span id="pb-status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
-                <span id="pb-status-text" class="text-xs text-gray-300 font-medium">Mock IoT Activo</span>
+                <span id="pb-status-text" class="text-xs text-gray-300 font-medium">Online</span>
             </div>
-            <button onclick="toggleMockEngine()" id="mock-toggle-btn" title="Pausar/Reanudar Mock" class="p-2 bg-cardBg hover:bg-borderBg border border-borderBg rounded-lg text-gray-300">
+            <button onclick="toggleMockEngine()" id="mock-toggle-btn" title="Pausar/Reanudar" class="p-2 bg-cardBg hover:bg-borderBg border border-borderBg rounded-lg text-gray-300">
                 <i class="fa-solid fa-pause"></i>
             </button>
         </div>
@@ -105,22 +117,22 @@
     <!-- Main Container -->
     <div class="flex flex-1 overflow-hidden">
         
-        <!-- Sidebar - Device Selector -->
+        <!-- Sidebar - Device Selector (8 pestañas: General + 7 equipos) -->
         <aside class="w-64 bg-cardBg border-r border-borderBg flex flex-col shrink-0">
             <div class="p-4 border-b border-borderBg flex justify-between items-center">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Equipos Registrados</span>
-                <span id="device-count" class="bg-darkBg text-blue-400 text-xs px-2 py-0.5 rounded-full border border-borderBg">7</span>
+                <span id="device-count" class="bg-darkBg text-blue-400 text-xs px-2 py-0.5 rounded-full border border-borderBg">8</span>
             </div>
             
             <div class="p-2 overflow-y-auto flex-1 space-y-1" id="device-list">
-                <!-- Dispositivos inyectados por JS -->
+                <!-- Dispositivos inyectados por JS (General + 7 equipos) -->
             </div>
 
             <!-- Quick Status Footer -->
             <div class="p-4 border-t border-borderBg bg-darkBg/50 text-xs text-gray-400">
                 <div class="flex justify-between mb-1">
                     <span>Frecuencia Muestreo:</span>
-                    <span class="text-white font-medium">2.0s</span>
+                    <span class="text-white font-medium">5.0s</span>
                 </div>
                 <div class="flex justify-between">
                     <span>Tasa de Error:</span>
@@ -132,6 +144,41 @@
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto p-6 bg-darkBg">
             
+            <!-- GENERAL VIEW: mini resumen última actualización de cada equipo -->
+            <div id="view-general" class="space-y-6 hidden">
+                <div class="flex justify-between items-center bg-cardBg border border-borderBg p-4 rounded-2xl">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 text-xl">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h2 class="text-xl font-bold text-white">Resumen general</h2>
+                                <span id="general-online-badge" class="px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EN LÍNEA</span>
+                            </div>
+                            <p id="general-last-update" class="text-xs text-gray-400">Última actualización: --:--:--</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-gray-400 block">Equipos supervisados</span>
+                        <span id="general-count" class="text-lg font-semibold text-white">7 / 7 activos</span>
+                    </div>
+                </div>
+
+                <!-- Grid estilo imagen: anillos circulares por equipo -->
+                <div class="bg-cardBg border border-borderBg p-5 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-white">Sensores y detalle por equipo</h3>
+                            <p class="text-xs text-gray-400">Último valor reportado por cada sensor · actualización cada 5.0 s</p>
+                        </div>
+                    </div>
+                    <div id="general-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+                        <!-- Mini tarjetas inyectadas por JS -->
+                    </div>
+                </div>
+            </div>
+
             <!-- REALTIME TAB CONTENT -->
             <div id="view-realtime" class="space-y-6">
                 <!-- Device Header Info -->
@@ -171,7 +218,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <div>
                             <h3 class="text-base font-semibold text-white">Monitoreo dinámico multi-variable</h3>
-                            <p class="text-xs text-gray-400">Ventana deslizante activa (Máximo 30 lecturas recientes)</p>
+                            <p class="text-xs text-gray-400">En vivo · actualización cada 5.0 s · últimas 30 lecturas</p>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="text-xs text-gray-400">Tópico Activo:</span>
@@ -193,16 +240,24 @@
             <div id="view-history" class="space-y-6 hidden">
                 <!-- Search & Filter Controls -->
                 <div class="bg-cardBg border border-borderBg p-5 rounded-2xl">
-                    <h3 class="text-base font-semibold text-white mb-4">Filtros de Búsqueda Histórica</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <h3 class="text-base font-semibold text-white">Filtros de Búsqueda Histórica</h3>
+                        <!-- Accesos rápidos de rango -->
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="setHistoryRange('1h')" class="text-[11px] px-3 py-1.5 rounded-full bg-darkBg border border-borderBg text-gray-300 hover:border-blue-500 hover:text-white transition">Última hora</button>
+                            <button onclick="setHistoryRange('24h')" class="text-[11px] px-3 py-1.5 rounded-full bg-darkBg border border-borderBg text-gray-300 hover:border-blue-500 hover:text-white transition">Últimas 24 h</button>
+                            <button onclick="setHistoryRange('7d')" class="text-[11px] px-3 py-1.5 rounded-full bg-darkBg border border-borderBg text-gray-300 hover:border-blue-500 hover:text-white transition">Últimos 7 días</button>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Equipo</label>
+                            <label class="block text-xs text-gray-400 mb-1"><i class="fa-solid fa-server mr-1 text-gray-500"></i>Equipo</label>
                             <select id="hist-filter-device" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                                 <!-- Dynamic options -->
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Sensor / Tópico</label>
+                            <label class="block text-xs text-gray-400 mb-1"><i class="fa-solid fa-microchip mr-1 text-gray-500"></i>Sensor / Tópico</label>
                             <select id="hist-filter-sensor" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                                 <option value="todos">Todos los Sensores</option>
                                 <option value="temperatura">Temperatura</option>
@@ -212,12 +267,24 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Desde</label>
-                            <input type="datetime-local" id="hist-filter-from" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2 focus:outline-none focus:border-blue-500">
+                            <label class="block text-xs text-gray-400 mb-1.5 flex items-center justify-between">
+                                <span><i class="fa-regular fa-calendar-days mr-1 text-blue-400"></i>Desde</span>
+                                <span class="text-[10px] text-gray-500">día / mes / año / hora</span>
+                            </label>
+                            <div class="relative">
+                                <input type="datetime-local" id="hist-filter-from" step="60" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2.5 pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition">
+                                <i class="fa-regular fa-calendar-days absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-xs"></i>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Hasta</label>
-                            <input type="datetime-local" id="hist-filter-to" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2 focus:outline-none focus:border-blue-500">
+                            <label class="block text-xs text-gray-400 mb-1.5 flex items-center justify-between">
+                                <span><i class="fa-regular fa-calendar-check mr-1 text-emerald-400"></i>Hasta</span>
+                                <button onclick="setHistoryToNow()" title="Poner hora actual" class="text-[10px] text-blue-400 hover:text-blue-300 hover:underline">Ahora</button>
+                            </label>
+                            <div class="relative">
+                                <input type="datetime-local" id="hist-filter-to" step="60" class="w-full bg-darkBg border border-borderBg text-white text-xs rounded-xl p-2.5 pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition">
+                                <i class="fa-regular fa-clock absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-xs"></i>
+                            </div>
                         </div>
                         <div>
                             <button onclick="executeHistorySearch()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center space-x-2">
@@ -226,20 +293,27 @@
                             </button>
                         </div>
                     </div>
+                    <p class="text-[11px] text-gray-500 mt-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Tip: usa el icono de calendario del campo para elegir fecha, mes, año y hora. Los botones rápidos ajustan el rango automáticamente.
+                    </p>
                 </div>
 
-                <!-- Historical Chart -->
+                <!-- Historical Chart (en vivo, panorama ampliable) -->
                 <div class="bg-cardBg border border-borderBg p-5 rounded-2xl">
-                    <h3 class="text-base font-semibold text-white mb-4">Tendencia Histórica</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-base font-semibold text-white">Tendencia Histórica</h3>
+                        <span class="text-[11px] text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span id="hist-live-label">En vivo · se amplía con nuevos datos</span></span>
+                    </div>
                     <div class="h-64 relative">
                         <canvas id="historyChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Historical Table -->
+                <!-- Historical Table (pág.1 = más recientes) -->
                 <div class="bg-cardBg border border-borderBg rounded-2xl overflow-hidden">
                     <div class="p-4 border-b border-borderBg flex justify-between items-center">
-                        <h3 class="text-base font-semibold text-white">Registros Encontrados</h3>
+                        <h3 class="text-base font-semibold text-white">Registros Encontrados <span class="text-[11px] font-normal text-gray-400 ml-2">pág. 1 = más recientes</span></h3>
                         <button onclick="exportCSV()" class="bg-darkBg hover:bg-borderBg text-gray-300 border border-borderBg px-3 py-1.5 rounded-lg text-xs flex items-center space-x-2">
                             <i class="fa-solid fa-file-csv text-emerald-400"></i>
                             <span>Exportar CSV</span>
@@ -268,7 +342,8 @@
                     <!-- Pagination -->
                     <div class="p-4 border-t border-borderBg flex items-center justify-between text-xs text-gray-400">
                         <span id="page-info">Mostrando 0 - 0 de 0</span>
-                        <div class="flex space-x-2">
+                        <div class="flex items-center space-x-2">
+                            <span id="page-num" class="text-gray-500">Página 1</span>
                             <button onclick="changePage(-1)" id="btn-prev-page" class="px-3 py-1 bg-darkBg border border-borderBg rounded text-gray-300 disabled:opacity-50">Anterior</button>
                             <button onclick="changePage(1)" id="btn-next-page" class="px-3 py-1 bg-darkBg border border-borderBg rounded text-gray-300 disabled:opacity-50">Siguiente</button>
                         </div>
@@ -280,18 +355,18 @@
     </div>
 
     <script>
-        // --- BASE DE DATOS Y EQUIPOS ---
+        // --- BASE DE DATOS Y EQUIPOS (8 pestañas: General + 7 equipos) ---
         const DEVICES = [
-            { id: 'EQ-001', name: 'Equipo 1 - Servidor Principal', icon: 'fa-server', online: true },
-            { id: 'EQ-002', name: 'Equipo 2 - Estación Meteorológica', icon: 'fa-cloud-sun', online: true },
-            { id: 'EQ-003', name: 'Equipo 3 - Planta Industrial', icon: 'fa-industry', online: true },
-            { id: 'EQ-004', name: 'Equipo 4 - Invernadero A', icon: 'fa-seedling', online: false },
-            { id: 'EQ-005', name: 'Equipo 5 - Laboratorio Central', icon: 'fa-flask', online: true },
-            { id: 'EQ-006', name: 'Equipo 6 - Almacén Refrigerado', icon: 'fa-snowflake', online: true },
-            { id: 'EQ-MINE', name: 'Mi Equipo (Local Node)', icon: 'fa-laptop-code', online: true }
+            { id: 'EQ-001', name: 'Calidad de aire_Equipo1', short: 'Calidad de aire', icon: 'fa-wind', online: true, primaryMetric: 'co2' },
+            { id: 'EQ-002', name: 'Luces_Equipo2', short: 'Luces', icon: 'fa-lightbulb', online: true, primaryMetric: 'humedad' },
+            { id: 'EQ-003', name: 'Siniestro_Equipo3', short: 'Siniestro', icon: 'fa-fire', online: true, primaryMetric: 'temperatura' },
+            { id: 'EQ-004', name: 'Presencia y confort_Equipo4', short: 'Presencia y confort', icon: 'fa-user-check', online: true, primaryMetric: 'humedad' },
+            { id: 'EQ-005', name: 'Network_Equipo5', short: 'Network', icon: 'fa-network-wired', online: true, primaryMetric: 'presion' },
+            { id: 'EQ-006', name: 'Exterior_Equipo6', short: 'Exterior', icon: 'fa-cloud-sun', online: true, primaryMetric: 'temperatura' },
+            { id: 'EQ-007', name: 'Temperatura y humedad_Equipo7', short: 'Temp. y humedad', icon: 'fa-temperature-high', online: true, primaryMetric: 'temperatura' }
         ];
 
-        let selectedDeviceId = 'EQ-001';
+        let selectedDeviceId = 'GENERAL';
         let currentTab = 'realtime';
         let mockActive = true;
         let activeChartVariable = 'temperatura';
@@ -308,14 +383,14 @@
             };
         });
 
-        // Base de datos histórica simulada
+        // Base de datos histórica simulada (incluye equipos con fallas: estado SIN DATOS)
         let historyDatabase = [];
 
         // Instancias de Chart.js
         let realtimeChartInstance = null;
         let historyChartInstance = null;
 
-        // Paginación
+        // Paginación (orden: pág.1 = más recientes)
         let currentPage = 1;
         const rowsPerPage = 7;
         let filteredHistoryData = [];
@@ -336,14 +411,11 @@
             generateInitialHistoryData();
             selectDevice(selectedDeviceId);
             
-            // Iniciar Motor Mock en tiempo real
-            setInterval(tickMockEngine, 2000);
+            // Motor en tiempo real cada 5.0s
+            setInterval(tickMockEngine, 5000);
 
-            // Ajustar fechas filtro histórico por defecto
-            const now = new Date();
-            const past = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-            document.getElementById('hist-filter-to').value = formatDateForInput(now);
-            document.getElementById('hist-filter-from').value = formatDateForInput(past);
+            // Rango filtro histórico por defecto: últimas 24h hasta ahora
+            setHistoryRange('24h');
         };
 
         // --- MANEJO DE PESTAÑAS ---
@@ -352,34 +424,67 @@
             const rtBtn = document.getElementById('tab-realtime-btn');
             const histBtn = document.getElementById('tab-history-btn');
             const rtView = document.getElementById('view-realtime');
+            const genView = document.getElementById('view-general');
             const histView = document.getElementById('view-history');
 
             if (tabName === 'realtime') {
                 rtBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 bg-blue-600 text-white shadow-md";
                 histBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-gray-400 hover:text-white";
-                rtView.classList.remove('hidden');
                 histView.classList.add('hidden');
+                updateMainVisibility();
             } else {
                 histBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 bg-blue-600 text-white shadow-md";
                 rtBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-gray-400 hover:text-white";
                 histView.classList.remove('hidden');
                 rtView.classList.add('hidden');
+                genView.classList.add('hidden');
                 executeHistorySearch();
             }
         }
 
-        // --- SELECCIÓN Y RENDERIZADO DE EQUIPOS ---
+        function updateMainVisibility() {
+            const rtView = document.getElementById('view-realtime');
+            const genView = document.getElementById('view-general');
+            const histView = document.getElementById('view-history');
+            if (currentTab !== 'realtime') return;
+            if (selectedDeviceId === 'GENERAL') {
+                genView.classList.remove('hidden');
+                rtView.classList.add('hidden');
+                renderGeneralView();
+            } else {
+                genView.classList.add('hidden');
+                rtView.classList.remove('hidden');
+            }
+        }
+
+        // --- SELECCIÓN Y RENDERIZADO DE EQUIPOS (8 pestañas) ---
         function renderDeviceList() {
             const listEl = document.getElementById('device-list');
             const selectFilter = document.getElementById('hist-filter-device');
             listEl.innerHTML = '';
             selectFilter.innerHTML = '<option value="todos">Todos los Equipos</option>';
 
+            // 1) Pestaña GENERAL primero
+            const isGeneralActive = selectedDeviceId === 'GENERAL';
+            const genItem = document.createElement('div');
+            genItem.onclick = () => handleSidebarClick('GENERAL');
+            genItem.className = `p-3 rounded-xl cursor-pointer flex items-center justify-between transition-all ${
+                isGeneralActive ? 'bg-blue-600/15 border border-blue-500/30 text-white' : 'hover:bg-darkBg/60 text-gray-400'
+            }`;
+            genItem.innerHTML = `
+                <div class="flex items-center space-x-3 truncate">
+                    <i class="fa-solid fa-layer-group ${isGeneralActive ? 'text-blue-400' : 'text-gray-500'}"></i>
+                    <span class="truncate font-semibold text-xs">General</span>
+                </div>
+                <span class="text-[10px] text-gray-500 shrink-0">resumen</span>
+            `;
+            listEl.appendChild(genItem);
+
             DEVICES.forEach(dev => {
-                // Item Sidebar
+                // Item Sidebar: si estoy en histórico, al tocar vuelve a realtime
                 const isActive = dev.id === selectedDeviceId;
                 const item = document.createElement('div');
-                item.onclick = () => selectDevice(dev.id);
+                item.onclick = () => handleSidebarClick(dev.id);
                 item.className = `p-3 rounded-xl cursor-pointer flex items-center justify-between transition-all ${
                     isActive ? 'bg-blue-600/15 border border-blue-500/30 text-white' : 'hover:bg-darkBg/60 text-gray-400'
                 }`;
@@ -400,9 +505,34 @@
             });
         }
 
+        // Click en sidebar: si estoy en histórico -> volver a realtime y mostrar equipo elegido
+        function handleSidebarClick(devId) {
+            if (currentTab === 'history') {
+                switchTabSilentRealtime();
+            }
+            selectDevice(devId);
+        }
+
+        function switchTabSilentRealtime() {
+            currentTab = 'realtime';
+            const rtBtn = document.getElementById('tab-realtime-btn');
+            const histBtn = document.getElementById('tab-history-btn');
+            rtBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 bg-blue-600 text-white shadow-md";
+            histBtn.className = "px-5 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-gray-400 hover:text-white";
+            document.getElementById('view-history').classList.add('hidden');
+        }
+
         function selectDevice(devId) {
             selectedDeviceId = devId;
+            renderDeviceList();
+
+            if (devId === 'GENERAL') {
+                updateMainVisibility();
+                return;
+            }
+
             const device = DEVICES.find(d => d.id === devId);
+            if (!device) return;
             
             document.getElementById('current-device-name').textContent = device.name;
             document.getElementById('current-device-id').textContent = `ID: ${device.id}`;
@@ -417,17 +547,95 @@
                 badge.textContent = "OFFLINE";
             }
 
-            renderDeviceList();
+            updateMainVisibility();
             updateCardsUI();
             updateRealtimeChart();
+        }
+
+        // --- VISTA GENERAL: mini resumen última actualización (estética anillos) ---
+        function getStatusInfo(pct) {
+            if (pct > 0.85) return { label: 'Crítico', cls: 'text-red-400 bg-red-500/10 border-red-500/20' };
+            if (pct < 0.15) return { label: 'Precaución', cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' };
+            if (pct > 0.65) return { label: 'En revisión', cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' };
+            return { label: 'Óptimo', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+        }
+
+        function renderGeneralView() {
+            const grid = document.getElementById('general-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            let latestTime = '--:--:--';
+            let activeCount = 0;
+
+            DEVICES.forEach(dev => {
+                const store = realtimeStore[dev.id];
+                const lastIdx = store.labels.length - 1;
+                const metricKey = dev.primaryMetric || 'temperatura';
+                const cfg = METRICS_CONFIG[metricKey];
+                const hasData = lastIdx >= 0 && dev.online;
+                const rawVal = hasData ? store[metricKey][lastIdx] : 0;
+                const val = typeof rawVal === 'number' ? rawVal : 0;
+                const timeStr = hasData ? store.labels[lastIdx] : 'sin datos';
+                if (hasData) { latestTime = timeStr; activeCount++; }
+
+                const pct = hasData ? Math.min(Math.max((val - cfg.min) / (cfg.max - cfg.min), 0), 1) : 0;
+                const radius = 30;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference - (pct * circumference);
+                const status = hasData ? getStatusInfo(pct) : { label: 'Sin datos', cls: 'text-gray-400 bg-gray-500/10 border-gray-500/20' };
+
+                const card = document.createElement('div');
+                card.onclick = () => selectDevice(dev.id);
+                card.className = "bg-darkBg/60 border border-borderBg p-3 rounded-2xl flex flex-col items-center text-center space-y-2 cursor-pointer hover:border-blue-500/40 transition";
+                card.innerHTML = `
+                    <span class="text-[11px] font-semibold text-gray-300 leading-tight">${dev.short}<br><span class="text-[10px] font-normal text-gray-500">${dev.id}</span></span>
+                    <div class="relative w-[76px] h-[76px] flex items-center justify-center shrink-0">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="${radius}" stroke="#262a36" stroke-width="9" fill="transparent" />
+                            <circle cx="50" cy="50" r="${radius}" stroke="${hasData ? cfg.color : '#374151'}" stroke-width="9" fill="transparent"
+                                stroke-dasharray="${circumference}"
+                                stroke-dashoffset="${offset}"
+                                stroke-linecap="round"
+                                class="circle-chart-circle" />
+                        </svg>
+                        <div class="absolute flex flex-col items-center leading-none">
+                            <span class="text-sm font-bold text-white">${hasData ? val.toFixed(1) : '—'}</span>
+                            <span class="text-[9px] text-gray-400">${cfg.unit}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] text-gray-400">${cfg.label}</p>
+                        <span class="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full border ${status.cls}">${status.label}</span>
+                        <p class="text-[10px] text-gray-500 font-mono">${timeStr}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('general-last-update').textContent = `Última actualización: ${latestTime}`;
+            document.getElementById('general-count').textContent = `${activeCount} / ${DEVICES.length} activos`;
+            const badge = document.getElementById('general-online-badge');
+            if (activeCount === DEVICES.length) {
+                badge.textContent = 'EN LÍNEA';
+                badge.className = "px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            } else if (activeCount === 0) {
+                badge.textContent = 'SIN DATOS';
+                badge.className = "px-2 py-0.5 text-xs rounded-full bg-red-500/10 text-red-400 border border-red-500/20";
+            } else {
+                badge.textContent = 'PARCIAL';
+                badge.className = "px-2 py-0.5 text-xs rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
+            }
         }
 
         // --- COMPONENTE DE TARJETAS CIRCULARES SVG ---
         function updateCardsUI() {
             const container = document.getElementById('cards-container');
+            if (!container || selectedDeviceId === 'GENERAL') return;
             container.innerHTML = '';
 
             const store = realtimeStore[selectedDeviceId];
+            if (!store) return;
             const lastIndex = store.labels.length - 1;
 
             Object.keys(METRICS_CONFIG).forEach(metricKey => {
@@ -441,17 +649,8 @@
                 const circumference = 2 * Math.PI * radius;
                 const strokeDashoffset = circumference - (pct * circumference);
 
-                // Estado de calidad/alerta
-                let statusLabel = "Normal";
-                let statusColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-                
-                if (pct > 0.85) {
-                    statusLabel = "Alto";
-                    statusColor = "text-red-400 bg-red-500/10 border-red-500/20";
-                } else if (pct < 0.15) {
-                    statusLabel = "Bajo";
-                    statusColor = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20";
-                }
+                // Estado profesional: Óptimo / En revisión / Precaución / Crítico
+                const status = lastIndex < 0 ? { label: 'Sin datos', cls: 'text-gray-400 bg-gray-500/10 border-gray-500/20' } : getStatusInfo(pct);
 
                 const card = document.createElement('div');
                 card.className = "bg-cardBg border border-borderBg p-4 rounded-2xl flex items-center justify-between shadow-sm hover:border-gray-700 transition";
@@ -466,8 +665,8 @@
                             <span class="text-xs text-gray-400 ml-0.5">${cfg.unit}</span>
                         </div>
                         <div>
-                            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full border ${statusColor}">
-                                ${statusLabel}
+                            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full border ${status.cls}">
+                                ${status.label}
                             </span>
                         </div>
                     </div>
@@ -521,7 +720,7 @@
                     scales: {
                         x: {
                             grid: { color: '#262a36' },
-                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                            ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }
                         },
                         y: {
                             grid: { color: '#262a36' },
@@ -534,7 +733,7 @@
                 }
             });
 
-            // Chart Histórico
+            // Chart Histórico (panorama ampliable, eje X con fecha+hora real)
             const ctxHist = document.getElementById('historyChart').getContext('2d');
             historyChartInstance = new Chart(ctxHist, {
                 type: 'line',
@@ -547,14 +746,16 @@
                         borderWidth: 2,
                         backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         fill: true,
-                        tension: 0.2
+                        tension: 0.2,
+                        pointRadius: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     scales: {
-                        x: { grid: { color: '#262a36' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                        x: { grid: { color: '#262a36' }, ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 10 } },
                         y: { grid: { color: '#262a36' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
                     },
                     plugins: { legend: { display: false } }
@@ -563,9 +764,10 @@
         }
 
         function updateRealtimeChart() {
-            if (!realtimeChartInstance) return;
+            if (!realtimeChartInstance || selectedDeviceId === 'GENERAL') return;
 
             const store = realtimeStore[selectedDeviceId];
+            if (!store) return;
             const cfg = METRICS_CONFIG[activeChartVariable];
 
             // Recrear gradiente con color actual de la métrica
@@ -594,16 +796,30 @@
             updateRealtimeChart();
         }
 
-        // --- MOCK ENGINE (SIMULADOR TIEMPO REAL CON VENTANA DESLIZANTE DE MAX 30) ---
+        // --- MOTOR TIEMPO REAL CADA 5.0s (ventana máx 30) + histórico con fallas ---
         function tickMockEngine() {
             if (!mockActive) return;
 
-            const timeLabel = new Date().toLocaleTimeString();
+            const now = new Date();
+            const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             DEVICES.forEach(dev => {
-                if (!dev.online) return;
-
                 const store = realtimeStore[dev.id];
+
+                // Si el equipo está caído: NO actualiza realtime, SÍ deja rastro en histórico
+                if (!dev.online) {
+                    historyDatabase.unshift({
+                        timestamp: now.toISOString(),
+                        deviceId: dev.id,
+                        deviceName: dev.name,
+                        temperatura: null,
+                        humedad: null,
+                        co2: null,
+                        presion: null,
+                        estado: 'SIN DATOS'
+                    });
+                    return;
+                }
                 
                 // Generar valores fluctuantes realistas
                 const prevTemp = store.temperatura.length > 0 ? store.temperatura[store.temperatura.length - 1] : 24.0;
@@ -616,14 +832,14 @@
                 const newCo2 = Math.min(Math.max(prevCo2 + (Math.random() - 0.49) * 15, 350), 1200);
                 const newPres = Math.min(Math.max(prevPres + (Math.random() - 0.5) * 1.5, 980), 1040);
 
-                // Insertar datos
+                // Insertar datos con hora real de la medición
                 store.labels.push(timeLabel);
                 store.temperatura.push(newTemp);
                 store.humedad.push(newHum);
                 store.co2.push(newCo2);
                 store.presion.push(newPres);
 
-                // REQUISITO MÁXIMO 30 PUNTOS (Ventana Deslizante)
+                // Máximo 30 puntos (ventana deslizante interna)
                 if (store.labels.length > 30) {
                     store.labels.shift();
                     store.temperatura.shift();
@@ -632,22 +848,30 @@
                     store.presion.shift();
                 }
 
-                // Guardar también en histórico general simulado
+                // Guardar también en histórico general (nuevos primero)
                 historyDatabase.unshift({
-                    timestamp: new Date().toISOString(),
+                    timestamp: now.toISOString(),
                     deviceId: dev.id,
                     deviceName: dev.name,
                     temperatura: newTemp,
                     humedad: newHum,
                     co2: newCo2,
-                    presion: newPres
+                    presion: newPres,
+                    estado: 'OK'
                 });
             });
 
             // Actualizar vista activa
             if (currentTab === 'realtime') {
-                updateCardsUI();
-                updateRealtimeChart();
+                if (selectedDeviceId === 'GENERAL') {
+                    renderGeneralView();
+                } else {
+                    updateCardsUI();
+                    updateRealtimeChart();
+                }
+            } else if (currentTab === 'history') {
+                // Tendencia histórica en vivo: amplía panorama sin perder la página
+                executeHistorySearch(true);
             }
         }
 
@@ -662,34 +886,38 @@
                 btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
                 ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
                 dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
-                text.textContent = "Mock IoT Activo";
+                text.textContent = "Online";
             } else {
                 btn.innerHTML = '<i class="fa-solid fa-play"></i>';
                 ping.className = "hidden";
                 dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500";
-                text.textContent = "Mock Pausado";
+                text.textContent = "Pausado";
             }
         }
 
         // --- FUNCIONES HISTÓRICAS Y TABLA ---
         function generateInitialHistoryData() {
-            // Generar 100 registros históricos para pruebas
+            // Generar historial inicial (incluye equipo 4 reparado + algunos SIN DATOS para probar fallas)
             const now = Date.now();
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 150; i++) {
                 const dev = DEVICES[i % DEVICES.length];
+                const falla = (i % 37 === 0); // falla simulada ocasional
                 historyDatabase.push({
-                    timestamp: new Date(now - i * 3600000).toISOString(),
+                    timestamp: new Date(now - i * 5 * 60 * 1000).toISOString(),
                     deviceId: dev.id,
                     deviceName: dev.name,
-                    temperatura: 20 + Math.random() * 10,
-                    humedad: 40 + Math.random() * 30,
-                    co2: 400 + Math.random() * 400,
-                    presion: 1000 + Math.random() * 20
+                    temperatura: falla ? null : 20 + Math.random() * 10,
+                    humedad: falla ? null : 40 + Math.random() * 30,
+                    co2: falla ? null : 400 + Math.random() * 400,
+                    presion: falla ? null : 1000 + Math.random() * 20,
+                    estado: falla ? 'SIN DATOS' : 'OK'
                 });
             }
+            // Orden base: más recientes primero
+            historyDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         }
 
-        function executeHistorySearch() {
+        function executeHistorySearch(preservePage = false) {
             const devFilter = document.getElementById('hist-filter-device').value;
             const sensorFilter = document.getElementById('hist-filter-sensor').value;
             const fromVal = document.getElementById('hist-filter-from').value;
@@ -705,7 +933,12 @@
                 return matchDev && matchDate;
             });
 
-            currentPage = 1;
+            // Pág.1 = más recientes, última pág. = más antiguos
+            filteredHistoryData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (!preservePage) currentPage = 1;
+            const maxPage = Math.max(Math.ceil(filteredHistoryData.length / rowsPerPage), 1);
+            if (currentPage > maxPage) currentPage = maxPage;
             renderHistoryTable();
             renderHistoryChart(sensorFilter);
         }
@@ -719,19 +952,23 @@
             const pageItems = filteredHistoryData.slice(start, end);
 
             if (pageItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">No se encontraron registros en el rango seleccionado</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">No se encontraron registros en el rango seleccionado (incluye equipos sin datos si existen fallas)</td></tr>`;
             } else {
                 pageItems.forEach(row => {
+                    const isFail = row.estado !== 'OK' || row.temperatura === null;
+                    const fmt = (v, digits=1) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(digits);
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-darkBg/50 transition";
                     tr.innerHTML = `
                         <td class="p-3.5 text-gray-300 font-mono">${formatDate(row.timestamp)}</td>
                         <td class="p-3.5 font-medium text-white">${row.deviceName}</td>
-                        <td class="p-3.5 text-orange-400">${row.temperatura.toFixed(1)} °C</td>
-                        <td class="p-3.5 text-blue-400">${row.humedad.toFixed(1)} %</td>
-                        <td class="p-3.5 text-purple-400">${Math.round(row.co2)} ppm</td>
-                        <td class="p-3.5 text-emerald-400">${Math.round(row.presion)} hPa</td>
-                        <td class="p-3.5"><span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">OK</span></td>
+                        <td class="p-3.5 text-orange-400">${isFail ? '—' : fmt(row.temperatura) + ' °C'}</td>
+                        <td class="p-3.5 text-blue-400">${isFail ? '—' : fmt(row.humedad) + ' %'}</td>
+                        <td class="p-3.5 text-purple-400">${isFail ? '—' : Math.round(row.co2) + ' ppm'}</td>
+                        <td class="p-3.5 text-emerald-400">${isFail ? '—' : Math.round(row.presion) + ' hPa'}</td>
+                        <td class="p-3.5">${isFail
+                            ? '<span class="px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded-full">SIN DATOS</span>'
+                            : '<span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">OK</span>'}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -741,59 +978,85 @@
             const total = filteredHistoryData.length;
             const maxPage = Math.ceil(total / rowsPerPage) || 1;
             document.getElementById('page-info').textContent = `Mostrando ${total > 0 ? start + 1 : 0} - ${Math.min(end, total)} de ${total}`;
+            document.getElementById('page-num').textContent = `Página ${currentPage} de ${maxPage}`;
             document.getElementById('btn-prev-page').disabled = currentPage === 1;
             document.getElementById('btn-next-page').disabled = currentPage >= maxPage;
         }
 
         function changePage(delta) {
             currentPage += delta;
+            const maxPage = Math.ceil(filteredHistoryData.length / rowsPerPage) || 1;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > maxPage) currentPage = maxPage;
             renderHistoryTable();
         }
 
         function renderHistoryChart(sensorKey) {
             if (!historyChartInstance) return;
 
-            const samples = filteredHistoryData.slice(0, 30).reverse();
-            const labels = samples.map(s => new Date(s.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+            // Panorama ampliable: últimos 120 puntos ordenados viejo->nuevo, con hora real (fecha+hora+seg)
+            const sortedAsc = [...filteredHistoryData].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            const samples = sortedAsc.slice(-120);
+            const labels = samples.map(s => {
+                const d = new Date(s.timestamp);
+                return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            });
             
             let data = [];
-            let label = 'Valores';
             let color = '#10b981';
 
+            const valOrNull = (v) => (v === null || v === undefined) ? null : v;
+
             if (sensorKey === 'todos' || sensorKey === 'temperatura') {
-                data = samples.map(s => s.temperatura);
-                label = 'Temperatura (°C)';
+                data = samples.map(s => valOrNull(s.temperatura));
                 color = '#f97316';
             } else if (sensorKey === 'humedad') {
-                data = samples.map(s => s.humedad);
-                label = 'Humedad (%)';
+                data = samples.map(s => valOrNull(s.humedad));
                 color = '#3b82f6';
             } else if (sensorKey === 'co2') {
-                data = samples.map(s => s.co2);
-                label = 'CO2 (ppm)';
+                data = samples.map(s => valOrNull(s.co2));
                 color = '#8b5cf6';
             } else if (sensorKey === 'presion') {
-                data = samples.map(s => s.presion);
-                label = 'Presión (hPa)';
+                data = samples.map(s => valOrNull(s.presion));
                 color = '#10b981';
             }
 
             historyChartInstance.data.labels = labels;
             historyChartInstance.data.datasets[0].data = data;
-            historyChartInstance.data.datasets[0].label = label;
             historyChartInstance.data.datasets[0].borderColor = color;
             historyChartInstance.data.datasets[0].backgroundColor = color + '22';
+            historyChartInstance.options.scales.x.ticks.maxTicksLimit = samples.length > 60 ? 12 : 10;
             historyChartInstance.update();
+            const liveLabel = document.getElementById('hist-live-label');
+            if (liveLabel) liveLabel.textContent = samples.length > 0
+                ? `En vivo · ${samples.length} puntos · últ. ${labels[labels.length - 1]}`
+                : 'En vivo · se amplía con nuevos datos';
         }
 
-        // --- UTILIDADES ---
+        // --- RANGOS RÁPIDOS + UTILIDADES FECHA ---
+        function setHistoryRange(range) {
+            const now = new Date();
+            let from = new Date(now);
+            if (range === '1h') from = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+            if (range === '24h') from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            if (range === '7d') from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('hist-filter-from').value = formatDateForInput(from);
+            document.getElementById('hist-filter-to').value = formatDateForInput(now);
+            executeHistorySearch();
+        }
+
+        function setHistoryToNow() {
+            document.getElementById('hist-filter-to').value = formatDateForInput(new Date());
+        }
+
         function formatDate(isoStr) {
             const d = new Date(isoStr);
-            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
         }
 
         function formatDateForInput(date) {
-            return date.toISOString().slice(0, 16);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
         }
 
         function setupChartSelectOptions() {
@@ -807,9 +1070,10 @@
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,Timestamp,Equipo,Temperatura,Humedad,CO2,Presion\n";
+            let csvContent = "data:text/csv;charset=utf-8,Timestamp,Equipo,Temperatura,Humedad,CO2,Presion,Estado\n";
             filteredHistoryData.forEach(row => {
-                csvContent += `"${row.timestamp}","${row.deviceName}",${row.temperatura.toFixed(2)},${row.humedad.toFixed(2)},${row.co2.toFixed(2)},${row.presion.toFixed(2)}\n`;
+                const f = (v) => (v === null || v === undefined) ? '' : Number(v).toFixed(2);
+                csvContent += `"${row.timestamp}","${row.deviceName}",${f(row.temperatura)},${f(row.humedad)},${f(row.co2)},${f(row.presion)},${row.estado || 'OK'}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
