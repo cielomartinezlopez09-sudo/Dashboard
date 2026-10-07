@@ -405,7 +405,6 @@
                     { key: 'temperatura', label: 'Temperatura', unit: '°C', min: 0, max: 50, color: '#f97316', icon: 'fa-temperature-high' },
                     { key: 'humedad', label: 'Humedad', unit: '%', min: 0, max: 100, color: '#3b82f6', icon: 'fa-droplet' },
                     { key: 'presion', label: 'Presión', unit: 'hPa', min: 950, max: 1050, color: '#10b981', icon: 'fa-gauge-high' },
-                    { key: 'RSSI', label: 'RSSI', unit: 'dBm', min: -100, max: -30, color: '#8b5cf6', icon: 'fa-signal' },
                     { key: 'CO_raw', label: 'CO Raw', unit: 'raw', min: 0, max: 1023, color: '#eab308', icon: 'fa-wind' },
                     { key: 'CO2_PPM', label: 'CO2 PPM', unit: 'ppm', min: 300, max: 1500, color: '#ef4444', icon: 'fa-cloud' }
                 ]
@@ -783,7 +782,17 @@
                 const timeStr = hasData ? store.labels[lastIdx] : 'sin datos';
                 if (hasData) { latestTime = timeStr; activeCount++; }
 
-                const pct = hasData ? Math.min(Math.max((val - topicCfg.min) / (topicCfg.max - topicCfg.min), 0), 1) : 0;
+                // Estado general = promedio de todos los tópicos juntos
+                let pct = 0;
+                if (hasData) {
+                    let sum = 0;
+                    dev.topics.forEach(t => {
+                        const raw = store.topics[t.key][lastIdx];
+                        const v = typeof raw === 'number' ? raw : 0;
+                        sum += Math.min(Math.max((v - t.min) / (t.max - t.min), 0), 1);
+                    });
+                    pct = sum / dev.topics.length;
+                }
                 const radius = 38;
                 const circumference = 2 * Math.PI * radius;
                 const offset = circumference - (pct * circumference);
@@ -804,12 +813,11 @@
                                 class="circle-chart-circle" />
                         </svg>
                         <div class="absolute flex flex-col items-center leading-none">
-                            <span class="text-sm font-bold text-white">${val.toFixed(1)}</span>
-                            <span class="text-[9px] text-gray-400">${topicCfg.unit}</span>
+                            <span class="text-sm font-bold text-white">${Math.round(pct * 100)}%</span>
+                            <span class="text-[9px] text-gray-400">Estado</span>
                         </div>
                     </div>
                     <div class="space-y-1">
-                        <p class="text-[10px] text-gray-400">${topicCfg.label}</p>
                         <span class="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full border ${status.cls}">${status.label}</span>
                         <p class="text-[10px] text-gray-500 font-mono">${timeStr}</p>
                     </div>
